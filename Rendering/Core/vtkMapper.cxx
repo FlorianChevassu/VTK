@@ -725,6 +725,7 @@ void vtkMapper::AcquireInvertibleLookupTable()
   if (!vtkMapper::InvertibleLookupTable)
   {
     vtkLookupTable *table = vtkLookupTable::New();
+    vtkMapper::InvertibleLookupTable = table;
     const int MML = 0x1000;
     table->SetNumberOfTableValues(MML);
     table->SetBelowRangeColor(0.0, 0.0, 0.0, 1.0);
@@ -742,7 +743,6 @@ void vtkMapper::AcquireInvertibleLookupTable()
     }
     table->Register(this);
     table->Delete();
-    vtkMapper::InvertibleLookupTable = table;
   }
   else
   {
