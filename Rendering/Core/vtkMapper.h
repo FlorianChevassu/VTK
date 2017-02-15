@@ -55,10 +55,12 @@
 #ifndef vtkMapper_h
 #define vtkMapper_h
 
-#include "vtkRenderingCoreModule.h" // For export macro
 #include "vtkAbstractMapper3D.h"
-#include "vtkSystemIncludes.h" // For VTK_COLOR_MODE_DEFAULT and _MAP_SCALARS
+#include "vtkRenderingCoreModule.h" // For export macro
 #include "vtkSmartPointer.h" // needed for vtkSmartPointer.
+#include "vtkSystemIncludes.h" // For VTK_COLOR_MODE_DEFAULT and _MAP_SCALARS
+
+class vtkLookupTable;
 
 #define VTK_RESOLVE_OFF 0
 #define VTK_RESOLVE_POLYGON_OFFSET 1
@@ -635,9 +637,10 @@ protected:
   void MapScalarsToTexture(vtkAbstractArray* scalars, double alpha);
 
   // Makes a lookup table that can be used for deferred colormaps
+  vtkSmartPointer<vtkLookupTable> CreateInvertibleLookupTable();
+  vtkLookupTable* GetInvertibleLookupTable();
   void AcquireInvertibleLookupTable();
   bool UseInvertibleColors;
-  static vtkScalarsToColors *InvertibleLookupTable;
 
   vtkScalarsToColors *LookupTable;
   int ScalarVisibility;

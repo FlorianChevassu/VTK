@@ -46,8 +46,6 @@ static double vtkMapperGlobalResolveCoincidentTopologyLineOffsetFactor = 1.0;
 static double vtkMapperGlobalResolveCoincidentTopologyLineOffsetUnits = 1.0;
 static double vtkMapperGlobalResolveCoincidentTopologyPointOffsetUnits = 0.0;
 
-vtkScalarsToColors *vtkMapper::InvertibleLookupTable = NULL;
-
 // Construct with initial range (0,1).
 vtkMapper::vtkMapper()
 {
@@ -101,13 +99,7 @@ vtkMapper::~vtkMapper()
   {
     this->LookupTable->UnRegister(this);
   }
-  assert(vtkMapper::InvertibleLookupTable);
-  bool clear = vtkMapper::InvertibleLookupTable->GetReferenceCount() == 1;
-  vtkMapper::InvertibleLookupTable->UnRegister(this);
-  if (clear)
-  {
-    vtkMapper::InvertibleLookupTable = NULL;
-  }
+  GetInvertibleLookupTable()->UnRegister(this);
 
   if ( this->Colors != 0 )
   {
@@ -720,34 +712,40 @@ void vtkMapper::CreateDefaultLookupTable()
   }
 }
 
+vtkSmartPointer<vtkLookupTable> vtkMapper::CreateInvertibleLookupTable()
+{
+  vtkSmartPointer<vtkLookupTable> result = vtkSmartPointer<vtkLookupTable>::New();
+  const int MML = 0x1000;
+  result->SetNumberOfTableValues(MML);
+  result->SetBelowRangeColor(0.0, 0.0, 0.0, 1.0);
+  result->SetAboveRangeColor(0.0, 0.0, 0.0, 1.0);
+  result->SetNanColor(0.0, 0.0, 0.0, 1.0);
+  unsigned char color[3] = { 0 };
+  for (int i = 0; i < MML; ++i)
+  {
+    ValueToColor(i, 0, MML, color);
+    result->SetTableValue(i,
+      (double)color[0] / 255.0,
+                         (double)color[1] / 255.0,
+                         (double)color[2] / 255.0,
+                         1);
+  }
+  return result;
+}
+
+vtkLookupTable* vtkMapper::GetInvertibleLookupTable()
+{
+  // Since C++11, static local variables are guaranteed to be created only once,
+  // no matter how many threads call the method. If other threads call GetInvertibleLookupTable()
+  // concurrently, the first one will create the static variable, and the others will wait for it
+  // to finish before accessing it.
+  static vtkSmartPointer<vtkLookupTable> table = CreateInvertibleLookupTable();
+  return table;
+}
+
 void vtkMapper::AcquireInvertibleLookupTable()
 {
-  if (!vtkMapper::InvertibleLookupTable)
-  {
-    vtkLookupTable *table = vtkLookupTable::New();
-    vtkMapper::InvertibleLookupTable = table;
-    const int MML = 0x1000;
-    table->SetNumberOfTableValues(MML);
-    table->SetBelowRangeColor(0.0, 0.0, 0.0, 1.0);
-    table->SetAboveRangeColor(0.0, 0.0, 0.0, 1.0);
-    table->SetNanColor(0.0, 0.0, 0.0, 1.0);
-    unsigned char color[3] = { 0 };
-    for (int i = 0; i < MML; ++i)
-    {
-      ValueToColor(i, 0, MML, color);
-      table->SetTableValue(i,
-          (double)color[0] / 255.0,
-          (double)color[1] / 255.0,
-          (double)color[2] / 255.0,
-          1);
-    }
-    table->Register(this);
-    table->Delete();
-  }
-  else
-  {
-    vtkMapper::InvertibleLookupTable->Register(this);
-  }
+  GetInvertibleLookupTable()->Register(this);
 }
 
 void vtkMapper::ValueToColor(double value, double min, double scale,
@@ -895,7 +893,7 @@ void vtkMapper::UseInvertibleColorFor(vtkDataObject *dataObject,
   else
   {
     // Just grab a reference to the invertible lookup table
-    this->LookupTable = vtkMapper::InvertibleLookupTable;
+    this->LookupTable = this->GetInvertibleLookupTable();
     this->LookupTable->Register(this);
   }
 
